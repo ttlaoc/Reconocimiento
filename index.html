@@ -44,12 +44,36 @@
             })
             .then(stream => {
                 video.srcObject = stream;
-                document.getElementById('predicciones').textContent = 'Cámara activa';
+                // Esperar a que el video esté listo
+                video.onloadedmetadata = () => {
+                    document.getElementById('predicciones').textContent = 'Cámara activa. Analizando...';
+                    realizarPredicciones();
+                };
             })
             .catch(error => {
                 console.error('Error al acceder a la cámara:', error);
                 document.getElementById('predicciones').textContent = 'Error: No se pudo acceder a la cámara.';
             });
+        }
+
+        // Función para realizar predicciones continuamente
+        async function realizarPredicciones() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                try {
+                    const predictions = await model.classify(video);
+                    
+                    // Mostrar las predicciones
+                    let resultadoTexto = 'Predicciones:\n';
+                    predictions.forEach((pred, index) => {
+                        resultadoTexto += `${index + 1}. ${pred.className}: ${(pred.probability * 100).toFixed(2)}%\n`;
+                    });
+                    document.getElementById('predicciones').textContent = resultadoTexto;
+                } catch (error) {
+                    console.error('Error durante la predicción:', error);
+                }
+            }
+            // Continuar realizando predicciones
+            requestAnimationFrame(realizarPredicciones);
         }
 
         // Iniciar carga del modelo cuando se carga la página
