@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Página</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+</head>
+<body>
+    <h1>Bienvenido</h1>
+    <p>Esta es una página HTML básica.</p>
+    
+    <video id="video" width="640" height="480" autoplay playsinline muted></video>
+    
+    <div id="resultados">
+        <h2>Resultados</h2>
+        <p id="predicciones"></p>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        let model;
+
+        // Cargar el modelo MobileNet
+        async function cargarModelo() {
+            try {
+                model = await mobilenet.load();
+                console.log('Modelo MobileNet cargado exitosamente');
+                document.getElementById('predicciones').textContent = 'Modelo cargado. Accediendo a la cámara...';
+                accederACamara();
+            } catch (error) {
+                console.error('Error al cargar el modelo:', error);
+                document.getElementById('predicciones').textContent = 'Error: No se pudo cargar el modelo.';
+            }
+        }
+
+        // Acceder a la cámara trasera del dispositivo
+        function accederACamara() {
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment' // Cámara trasera
+                }
+            })
+            .then(stream => {
+                video.srcObject = stream;
+                document.getElementById('predicciones').textContent = 'Cámara activa';
+            })
+            .catch(error => {
+                console.error('Error al acceder a la cámara:', error);
+                document.getElementById('predicciones').textContent = 'Error: No se pudo acceder a la cámara.';
+            });
+        }
+
+        // Iniciar carga del modelo cuando se carga la página
+        cargarModelo();
+    </script>
+</body>
+</html>
