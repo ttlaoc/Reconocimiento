@@ -126,7 +126,7 @@
             const model = await mobilenet.load();
             let ultimaPrediccion = '';
             let tiempoUltimaPrediccion = 0;
-            const INTERVALO_MS = 3000; // 3 segundos
+            const INTERVALO_MS = 1000; // 1 segundo
 
             // Traduce texto de inglés a español usando LibreTranslate y cachea resultados
             const cacheTraducciones = {};
