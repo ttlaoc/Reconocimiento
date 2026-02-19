@@ -1,83 +1,195 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Página</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <title>Clasificador MobileNet</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ef 100%);
+            color: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        header {
+            width: 100%;
+            background: #2563eb;
+            color: #fff;
+            padding: 1.5rem 0 1rem 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+            margin-bottom: 2rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            background: #fff;
+            border-radius: 1.2rem;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
+            padding: 2rem 1.5rem 1.5rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            max-width: 360px;
+            border-radius: 0.8rem;
+            border: 2px solid #2563eb;
+            background: #000;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 2px 12px rgba(37, 99, 235, 0.10);
+        }
+
+        #resultados {
+            width: 100%;
+            min-height: 3em;
+            background: #f1f5f9;
+            border-radius: 0.6rem;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            padding: 1em 0.8em;
+            font-size: 1.1em;
+            color: #222;
+            margin-top: 0.5em;
+            text-align: left;
+            word-break: break-word;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                max-width: 98vw;
+                padding: 1rem 0.3rem 1rem 0.3rem;
+            }
+
+            video {
+                max-width: 98vw;
+            }
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Bienvenido</h1>
-    <p>Esta es una página HTML básica.</p>
-    
-    <video id="video" width="640" height="480" autoplay playsinline muted></video>
-    
-    <div id="resultados">
-        <h2>Resultados</h2>
-        <p id="predicciones"></p>
-    </div>
-
+    <header>
+        <h1>Clasificador de Imágenes MobileNet</h1>
+        <p style="margin:0.5em 0 0 0; font-size:1.1em; font-weight:400;">Utiliza tu cámara para identificar objetos en
+            tiempo real</p>
+    </header>
+    <main class="container">
+        <video id="video" autoplay muted playsinline controls></video>
+        <div id="resultados"></div>
+    </main>
+    <!-- Referencias a TensorFlow.js y MobileNet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.18.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
     <script>
-        const video = document.getElementById('video');
-        let model;
-
-        // Cargar el modelo MobileNet
-        async function cargarModelo() {
+        // Acceder a la cámara trasera y mostrarla en el elemento video
+        async function iniciarCamara() {
+            const video = document.getElementById('video');
             try {
-                model = await mobilenet.load();
-                console.log('Modelo MobileNet cargado exitosamente');
-                document.getElementById('predicciones').textContent = 'Modelo cargado. Accediendo a la cámara...';
-                accederACamara();
-            } catch (error) {
-                console.error('Error al cargar el modelo:', error);
-                document.getElementById('predicciones').textContent = 'Error: No se pudo cargar el modelo.';
-            }
-        }
-
-        // Acceder a la cámara trasera del dispositivo
-        function accederACamara() {
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment' // Cámara trasera
-                }
-            })
-            .then(stream => {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { exact: 'environment' } },
+                    audio: false
+                });
                 video.srcObject = stream;
-                // Esperar a que el video esté listo
-                video.onloadedmetadata = () => {
-                    document.getElementById('predicciones').textContent = 'Cámara activa. Analizando...';
-                    realizarPredicciones();
-                };
-            })
-            .catch(error => {
-                console.error('Error al acceder a la cámara:', error);
-                document.getElementById('predicciones').textContent = 'Error: No se pudo acceder a la cámara.';
-            });
-        }
-
-        // Función para realizar predicciones continuamente
-        async function realizarPredicciones() {
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            } catch (err) {
+                // Si no se puede acceder a la cámara trasera, intenta la predeterminada
                 try {
-                    const predictions = await model.classify(video);
-                    
-                    // Mostrar las predicciones
-                    let resultadoTexto = 'Predicciones:\n';
-                    predictions.forEach((pred, index) => {
-                        resultadoTexto += `${index + 1}. ${pred.className}: ${(pred.probability * 100).toFixed(2)}%\n`;
-                    });
-                    document.getElementById('predicciones').textContent = resultadoTexto;
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    video.srcObject = stream;
                 } catch (error) {
-                    console.error('Error durante la predicción:', error);
+                    document.getElementById('resultados').textContent = 'No se pudo acceder a la cámara: ' + error;
                 }
             }
-            // Continuar realizando predicciones
-            requestAnimationFrame(realizarPredicciones);
         }
+        window.addEventListener('DOMContentLoaded', iniciarCamara);
+        // Cargar MobileNet y analizar el video en tiempo real
+        async function iniciarMobileNet() {
+            const video = document.getElementById('video');
+            const resultados = document.getElementById('resultados');
+            // Esperar a que el video esté listo
+            await new Promise(resolve => {
+                if (video.readyState >= 2) return resolve();
+                video.onloadeddata = resolve;
+            });
+            const model = await mobilenet.load();
+            let ultimaPrediccion = '';
+            let tiempoUltimaPrediccion = 0;
+            const INTERVALO_MS = 3000; // 3 segundos
 
-        // Iniciar carga del modelo cuando se carga la página
-        cargarModelo();
+            // Traduce texto de inglés a español usando LibreTranslate y cachea resultados
+            const cacheTraducciones = {};
+            async function traducir(texto) {
+                if (cacheTraducciones[texto]) return cacheTraducciones[texto];
+                try {
+                    const resp = await fetch('https://libretranslate.de/translate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ q: texto, source: 'en', target: 'es', format: 'text' })
+                    });
+                    const data = await resp.json();
+                    if (data.translatedText) {
+                        cacheTraducciones[texto] = data.translatedText;
+                        return data.translatedText;
+                    } else {
+                        return texto;
+                    }
+                } catch (e) {
+                    return texto;
+                }
+            }
+
+            async function analizarFrame() {
+                const ahora = Date.now();
+                if (video.readyState >= 2 && !video.paused && !video.ended) {
+                    if (ahora - tiempoUltimaPrediccion > INTERVALO_MS) {
+                        const predictions = await model.classify(video);
+                        // Traducir los nombres de clase (solo si no están en caché)
+                        const traducciones = await Promise.all(predictions.map(async p => {
+                            // Si ya está en caché, usarlo directamente
+                            if (cacheTraducciones[p.className]) {
+                                return `<strong>${cacheTraducciones[p.className]}</strong>: ${(p.probability * 100).toFixed(2)}%`;
+                            } else {
+                                // Mostrar en inglés mientras se traduce
+                                traducir(p.className).then(trad => {
+                                    // Si la predicción sigue siendo la misma, actualiza el resultado
+                                    if (ultimaPrediccion.includes(p.className)) {
+                                        resultados.innerHTML = ultimaPrediccion.replace(
+                                            `<strong>${p.className}</strong>`,
+                                            `<strong>${trad}</strong>`
+                                        );
+                                    }
+                                });
+                                return `<strong>${p.className}</strong>: ${(p.probability * 100).toFixed(2)}%`;
+                            }
+                        }));
+                        ultimaPrediccion = traducciones.join('<br>');
+                        tiempoUltimaPrediccion = ahora;
+                    }
+                    resultados.innerHTML = ultimaPrediccion;
+                }
+                requestAnimationFrame(analizarFrame);
+            }
+            analizarFrame();
+        }
+        window.addEventListener('DOMContentLoaded', () => {
+            iniciarMobileNet();
+        });
     </script>
 </body>
+
+</html>
+</body>
+
 </html>
